@@ -20,7 +20,7 @@ import {
   type HistoryItemWithoutId,
   AuthState,
 } from './types.js';
-import { MessageType } from './types.js';
+import { MessageType, StreamingState } from './types.js';
 import {
   type EditorType,
   type Config,
@@ -316,7 +316,7 @@ Logging in with Google... Please restart Gemini CLI to continue.
   useEffect(() => {
     // Only sync when not currently authenticating
     if (authState === AuthState.Authenticated) {
-      setUserTier(config.getGeminiClient()?.getUserTier());
+      setUserTier(config.getUserTier());
     }
   }, [config, authState]);
 
@@ -699,7 +699,20 @@ Logging in with Google... Please restart Gemini CLI to continue.
 
   const { handleInput: vimHandleInput } = useVim(buffer, handleFinalSubmit);
 
-  const isInputActive = !initError && !isProcessing;
+  /**
+   * Determines if the input prompt should be active and accept user input.
+   * Input is disabled during:
+   * - Initialization errors
+   * - Slash command processing
+   * - Tool confirmations (WaitingForConfirmation state)
+   * - Any future streaming states not explicitly allowed
+   */
+  const isInputActive =
+    !initError &&
+    !isProcessing &&
+    (streamingState === StreamingState.Idle ||
+      streamingState === StreamingState.Responding) &&
+    !isProQuotaDialogOpen;
 
   // Compute available terminal height based on controls measurement
   const availableTerminalHeight = useMemo(() => {
@@ -903,7 +916,6 @@ Logging in with Google... Please restart Gemini CLI to continue.
         isEditorDialogOpen ||
         isSettingsDialogOpen ||
         isFolderTrustDialogOpen ||
-        isAuthenticating ||
         showPrivacyNotice;
       if (anyDialogOpen) {
         return;
@@ -932,9 +944,6 @@ Logging in with Google... Please restart Gemini CLI to continue.
       ) {
         handleSlashCommand('/ide status');
       } else if (keyMatchers[Command.QUIT](key)) {
-        if (isAuthenticating) {
-          return;
-        }
         if (!ctrlCPressedOnce) {
           cancelOngoingRequest?.();
         }
@@ -968,7 +977,6 @@ Logging in with Google... Please restart Gemini CLI to continue.
       setCtrlDPressedOnce,
       ctrlDTimerRef,
       handleSlashCommand,
-      isAuthenticating,
       cancelOngoingRequest,
       isThemeDialogOpen,
       isAuthDialogOpen,
