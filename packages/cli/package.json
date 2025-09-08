@@ -1,6 +1,6 @@
 {
   "name": "@google/gemini-cli",
-  "version": "0.3.3",
+  "version": "0.1.0-kola",
   "description": "Gemini CLI",
   "repository": {
     "type": "git",
