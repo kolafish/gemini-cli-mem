@@ -80,3 +80,82 @@ subsystems that the CLI wires together.
 ## Notes
 - Node.js >= 20 is required (see root `package.json`).
 - MCP support is wired through `packages/core` and surfaced in the CLI config.
+
+## Complex request execution flow (end-to-end)
+Below is a detailed, code-oriented walkthrough of how a complex request
+(multi-step reasoning + multiple tool calls) is handled from the CLI to the
+core and back.
+
+### 1) CLI bootstraps and loads configuration
+- **Entry point**: `packages/cli/src/gemini.tsx`
+- **Config load**: `packages/cli/src/config/config.ts` and
+  `packages/core/src/config/config.ts` parse CLI args + settings.
+- **Settings + model selection**: core config + model tables in
+  `packages/core/src/config/models.ts` and `packages/core/src/config/defaultModelConfigs.ts`.
+
+### 2) Session context and memory are assembled
+- **Memory discovery** (GEMINI.md chain): `packages/core/src/utils/memoryDiscovery.ts`.
+- **Workspace context**: `packages/core/src/utils/workspaceContext.ts`.
+- **Context manager** builds what gets injected into prompts:
+  `packages/core/src/services/contextManager.ts`.
+
+### 3) Prompt + request are constructed
+- **Prompt template assembly**: `packages/core/src/core/prompts.ts`.
+- **Turn state + token accounting**: `packages/core/src/core/turn.ts` and
+  `packages/core/src/core/tokenLimits.ts`.
+- **Request building**: `packages/core/src/core/geminiRequest.ts`.
+
+### 4) Model routing, availability, and fallback
+- **Availability + policy**: `packages/core/src/availability/*`.
+- **Model routing strategy**: `packages/core/src/routing/modelRouterService.ts`.
+- **Fallback logic**: `packages/core/src/fallback/handler.ts` and
+  `packages/core/src/utils/quotaErrorDetection.ts`.
+
+### 5) Chat execution and streaming
+- **Primary chat loop**: `packages/core/src/core/geminiChat.ts`
+  (streaming chunks + retry handling).
+- **Content generators**:
+  `packages/core/src/core/contentGenerator.ts`,
+  `packages/core/src/core/loggingContentGenerator.ts`,
+  `packages/core/src/core/recordingContentGenerator.ts`.
+
+### 6) Tool call extraction and scheduling
+- **Tool registry + definitions**: `packages/core/src/tools/tool-registry.ts`,
+  `packages/core/src/tools/tools.ts`.
+- **Scheduler**: `packages/core/src/core/coreToolScheduler.ts` and
+  `packages/core/src/scheduler/scheduler.ts`.
+- **Confirmation flow**: `packages/core/src/scheduler/confirmation.ts` and
+  `packages/core/src/confirmation-bus/message-bus.ts`.
+- **Policy checks**: `packages/core/src/policy/policy-engine.ts` and
+  `packages/core/src/policy/config.ts`.
+
+### 7) Tool execution (including MCP tools)
+- **Local tools** live in `packages/core/src/tools/`:
+  `read-file.ts`, `edit.ts`, `write-file.ts`, `shell.ts`, `web-fetch.ts`, etc.
+- **MCP client/tool bridge**:
+  `packages/core/src/tools/mcp-client.ts`,
+  `packages/core/src/tools/mcp-tool.ts`,
+  with auth helpers in `packages/core/src/mcp/`.
+- **Shell + file execution services**:
+  `packages/core/src/services/shellExecutionService.ts`,
+  `packages/core/src/services/fileSystemService.ts`.
+
+### 8) Tool results are fed back into the model
+- Tool results are wrapped and appended to the turn in
+  `packages/core/src/core/turn.ts`.
+- The chat loop in `packages/core/src/core/geminiChat.ts` sends the next model
+  request, potentially triggering more tools (iterative reasoning cycle).
+
+### 9) Output formatting + telemetry
+- **Output formatters**:
+  `packages/core/src/output/json-formatter.ts` and
+  `packages/core/src/output/stream-json-formatter.ts`.
+- **Telemetry events**: `packages/core/src/telemetry/`.
+- **Session recording + summaries**:
+  `packages/core/src/services/chatRecordingService.ts` and
+  `packages/core/src/services/sessionSummaryService.ts`.
+
+### 10) CLI renders responses and updates UI
+- **UI rendering**: `packages/cli/src/ui/*` and `packages/cli/src/gemini.tsx`.
+- **Non-interactive mode**: `packages/cli/src/nonInteractiveCli.ts` renders
+  structured output (JSON, streaming JSON, etc.).
