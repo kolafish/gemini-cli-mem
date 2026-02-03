@@ -8,7 +8,8 @@ Gemini CLI is an open-source terminal AI agent for Google's Gemini models. It pr
   - `packages/cli/src/gemini.tsx`: interactive TUI runtime.
   - `packages/cli/src/nonInteractiveCli.ts`: `gemini -p` style non-interactive runs.
 - `packages/core/`: Shared core library used by the CLI. Provides Gemini client abstraction, prompt/tool orchestration, MCP client/server utilities, telemetry, file discovery, shell execution, and workspace context helpers. (See the core deep dive below.)
-- `packages/a2a-server/`: Experimental A2A server implementation.
+- `packages/a2a-server/`: Experimental A2A server implementation. See
+  `docs/a2a-server.md` for usage and WeChat integration guidance.
 - `packages/vscode-ide-companion/`: VS Code extension that feeds editor context and diffs into Gemini CLI.
 - `packages/test-utils/`: Shared testing helpers.
 - `integration-tests/`: Vitest-based integration tests (including sandboxed variants).
